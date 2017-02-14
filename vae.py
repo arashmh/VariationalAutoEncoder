@@ -6,7 +6,9 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from scipy.stats import norm
+from sklearn import manifold
 
 from keras.layers import Input, Dense, Lambda, Flatten, Reshape
 from keras.layers import Convolution2D, Deconvolution2D, UpSampling2D
@@ -18,7 +20,7 @@ batch_size = 10
 original_dim = 784
 latent_dim = 10
 intermediate_dim = 128
-nbEpoch = 1
+nbEpoch = 10
 imageSize = 128
 
 
@@ -51,7 +53,7 @@ def loadDataset():
         # Load hdf5 dataset
         h5f = h5py.File("coins.h5", 'r')
         X_train = h5f['X']
-        return X_train[:10], X_train[-10:]
+        return X_train[:8000], X_train[-1000:]
     else:
         #We don't generate the dataset in this example
         print "[!] No dataset found (coins.h5)"
@@ -63,7 +65,7 @@ def getModels():
     global z_log_var
 
     # Define layers 
-    x = Input(batch_shape=(batch_size, imageSize, imageSize, 3))
+    x = Input(batch_shape=(None, imageSize, imageSize, 3))
 
     # Conv + Pool
     conv_1 = Convolution2D(8, 1, 1, border_mode='same', activation='relu')(x)
@@ -156,27 +158,29 @@ def trainModel():
     print("Saving weights...")
     vae.save_weights("model.h5")
 
-# Generates images and plots
-def testModel():
-    # Create models
-    vae, encoder, generator = getModels()
+# Show dataset images with T-sne projection of latent space encoding
+def computeLatentSpaceTSNEProjection(X, encoder, display=True):
+    # Compute latent space representation
+    print("Computing latent space projection...")
+    X_encoded = encoder.predict(X, batch_size=batch_size)
 
-    # Load VAE weights
-    print("Loading weights...")
-    vae.load_weights("model.h5")
+    # Compute t-SNE embedding of latent space
+    print("Computing t-SNE embedding...")
+    tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+    X_tsne = tsne.fit_transform(X_encoded)
 
-    # Load dataset to test
-    _, X_test = loadDataset()
-
-    # Display a 2D plot of the images in the latent space
-    X_test_encoded = encoder.predict(X_test, batch_size=batch_size)
-    fig, ax = plt.subplots()
-    imscatter(X_test_encoded[:, 0], X_test_encoded[:, 1], imageData=X_test, ax=ax, zoom=0.2)
-    plt.show()
-
+    # Plot images according to t-sne embedding
+    if display:
+        print("Plotting t-SNE visualization...")
+        fig, ax = plt.subplots()
+        imscatter(X_tsne[:, 0], X_tsne[:, 1], imageData=X, ax=ax, zoom=0.1)
+        plt.show()
+    else:
+        return X_tsne
+    
+def visualizeGeneratedImages(generator, gridSize=3):
     # Display a 2D manifold of the images
-    gridSize = 3
-    imageDisplaySize = 28
+    imageDisplaySize = 64
     figure = np.zeros((imageDisplaySize * gridSize, imageDisplaySize * gridSize, 3))
     
     # Linearly spaced coordinates on the unit square were transformed through the inverse CDF (ppf) of the Gaussian
@@ -184,6 +188,8 @@ def testModel():
     grid_x = norm.ppf(np.linspace(0.05, 0.95, gridSize))
     grid_y = norm.ppf(np.linspace(0.05, 0.95, gridSize))
 
+    # We walk through the dimension 0 and 1 of the latent space
+    # Note: these might not be the most relevant
     for i, yi in enumerate(grid_x):
         for j, xi in enumerate(grid_y):
             z_sample = np.zeros(latent_dim)
@@ -196,8 +202,107 @@ def testModel():
             figure[i * imageDisplaySize: (i + 1) * imageDisplaySize, j * imageDisplaySize: (j + 1) * imageDisplaySize] = image
 
     plt.figure(figsize=(5, 5))
-    plt.imshow(figure, cmap='Greys_r')
+    plt.imshow(figure)
     plt.show()
+
+def visualizeReconstructedImages(X, vae):
+    # Crop X
+    X = X[:10]
+    print("Generating 10 image reconstructions...")
+    reconstructedX = vae.predict(X)
+
+    result = None
+    for i in range(len(X)/2-1):
+        img = X[2*i]
+        reconstruction = reconstructedX[2*i]
+        img2 = X[2*i+1]
+        reconstruction2 = reconstructedX[2*i+1]
+        image = np.hstack([img,reconstruction,img2,reconstruction2])*255.
+        image = image.astype(np.uint8)
+        result = image if result is None else np.vstack([result,image])
+
+    cv2.imshow("LOL",result)
+    cv2.waitKey()
+
+# Show every image, good for showing interplation candidates
+def visualizeDataset(X):
+    for i,image in enumerate(X):
+        image = (image*255).astype(np.uint8)
+        cv2.imshow(str(i),image)
+        cv2.waitKey()
+
+# Shows linear inteprolation in image space vs latent space
+def visualizeInterpolation(X, encoder, generator):
+    # Extract random indices
+    startIndex = 2
+    endIndex = 53
+    X0 = np.zeros([batch_size,imageSize,imageSize,3])
+    X0[0] = X[startIndex]
+    X0[1] = X[endIndex]
+    X = X0
+
+    print("Generating 10 image reconstructions...")
+    latentX = encoder.predict(X)
+    latentStart, latentEnd = latentX[0], latentX[1]
+
+    # True image for comparison
+    startImage = X[0]
+    endImage = X[1]
+
+    vectors = []
+    normalImages = []
+
+    #Linear interpolation
+    alphaValues = np.linspace(0, 1, 10)
+    for alpha in alphaValues:
+        # Latent space interpolation
+        vector = latentStart*(1-alpha) + latentEnd*alpha
+        vectors.append(vector)
+        # Image space interpolation
+        blendImage = cv2.addWeighted(startImage,1-alpha,endImage,alpha,0)
+        normalImages.append(blendImage)
+
+    # Decode latent space vectors
+    vectors = np.array(vectors)
+    reconstructions = generator.predict(vectors)
+
+    # Put final image together
+    resultLatent = None
+    resultImage = None
+    for i in range(len(reconstructions)):
+        interpolatedImage = normalImages[i]*255
+        interpolatedImage = interpolatedImage.astype(np.uint8)
+        resultImage = interpolatedImage if resultImage is None else np.hstack([resultImage,interpolatedImage])
+
+        reconstructedImage = reconstructions[i]*255.
+        reconstructedImage = reconstructedImage.astype(np.uint8)
+        resultLatent = reconstructedImage if resultLatent is None else np.hstack([resultLatent,reconstructedImage])
+    
+        result = np.vstack([resultImage,resultLatent])
+
+    cv2.imshow("Interpolation in Image Space vs Latent Space",result)
+    cv2.waitKey()
+
+# Generates images and plots
+def testModel():
+    # Create models
+    print("Creating VAE, Encoder and Generator...")
+    vae, encoder, generator = getModels()
+
+    # Load VAE weights
+    print("Loading weights...")
+    vae.load_weights("model.h5")
+
+    # Load dataset to test
+    print("Loading dataset...")
+    _, X_test = loadDataset()
+
+    #visualizeDataset(X_test)
+    #visualizeReconstructedImages(X_test, vae)
+    #computeLatentSpaceTSNEProjection(X_test, encoder, display=True)
+    visualizeInterpolation(X_test, encoder, generator)
+    #visualizeGeneratedImages(generator, gridSize=5)
+
 
 # Scatter with images instead of points
 def imscatter(x, y, ax, imageData, zoom=1):

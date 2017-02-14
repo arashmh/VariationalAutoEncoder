@@ -1,6 +1,7 @@
 import os
 import sys
 import h5py
+import cv2
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -138,14 +139,10 @@ def getModels():
 
     # Build generator
     generator = Model(decoder_input, _x_decoded_mean_squash)
-
     return vae, encoder, generator
 
 # Trains the VAE
 def trainModel():
-
-    for model in getModels():
-        print model.summary()
 
     # Create models
     vae, _, _ = getModels()
@@ -171,18 +168,16 @@ def testModel():
     # Load dataset to test
     _, X_test = loadDataset()
 
-
     # Display a 2D plot of the images in the latent space
     X_test_encoded = encoder.predict(X_test, batch_size=batch_size)
     fig, ax = plt.subplots()
-    imscatter(X_test_encoded[:, 0], X_test_encoded[:, 1], imageData=X_test, ax=ax, zoom=0.7)
+    imscatter(X_test_encoded[:, 0], X_test_encoded[:, 1], imageData=X_test, ax=ax, zoom=0.2)
     plt.show()
-    return
 
     # Display a 2D manifold of the images
     gridSize = 3
     imageDisplaySize = 28
-    figure = np.zeros((imageDisplaySize * gridSize, imageDisplaySize * gridSize))
+    figure = np.zeros((imageDisplaySize * gridSize, imageDisplaySize * gridSize, 3))
     
     # Linearly spaced coordinates on the unit square were transformed through the inverse CDF (ppf) of the Gaussian
     # to produce values of the latent variables z, since the prior of the latent space is Gaussian
@@ -191,24 +186,20 @@ def testModel():
 
     for i, yi in enumerate(grid_x):
         for j, xi in enumerate(grid_y):
-            z_sample = np.array([[xi, yi]])
-            z_sample = np.tile(z_sample, batch_size).reshape(batch_size, 2)
+            z_sample = np.zeros(latent_dim)
+            z_sample[0] = xi
+            z_sample[1] = yi
+            z_sample = np.tile(z_sample,batch_size)
+            z_sample = z_sample.reshape([batch_size, latent_dim])
             x_decoded = generator.predict(z_sample, batch_size=batch_size)
-            image = x_decoded[0].reshape(imageDisplaySize, imageDisplaySize)
+            image = cv2.resize(x_decoded[0],(imageDisplaySize,imageDisplaySize))
             figure[i * imageDisplaySize: (i + 1) * imageDisplaySize, j * imageDisplaySize: (j + 1) * imageDisplaySize] = image
 
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(5, 5))
     plt.imshow(figure, cmap='Greys_r')
     plt.show()
 
-
-def main():
-    x = np.linspace(0, 10, 20)
-    y = np.cos(x)
-    fig, ax = plt.subplots()
-    imscatter(x, y, ax=ax, zoom=0.2)
-    plt.show()
-
+# Scatter with images instead of points
 def imscatter(x, y, ax, imageData, zoom=1):
     images = []
 
@@ -224,10 +215,6 @@ def imscatter(x, y, ax, imageData, zoom=1):
     
     ax.update_datalim(np.column_stack([x, y]))
     ax.autoscale()
-
-
-
-
 
 if __name__ == "__main__":
     arg = sys.argv[1] if len(sys.argv) == 2 else None 

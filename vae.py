@@ -8,7 +8,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from scipy.stats import norm
 
 from keras.layers import Input, Dense, Lambda, Flatten, Reshape
-from keras.layers import Convolution2D, Deconvolution2D
+from keras.layers import Convolution2D, Deconvolution2D, UpSampling2D
 from keras.models import Model
 from keras import backend as K
 from keras import objectives
@@ -65,7 +65,7 @@ def getModels():
     x = Input(batch_shape=(batch_size, imageSize, imageSize, 3))
 
     # Conv + Pool
-    conv_1 = Convolution2D(8, 2, 2, border_mode='same', activation='relu')(x)
+    conv_1 = Convolution2D(8, 1, 1, border_mode='same', activation='relu')(x)
     conv_2 = Convolution2D(16, 3, 3,   border_mode='same', activation='relu', subsample=(2, 2))(conv_1)
     conv_3 = Convolution2D(32, 3, 3,   border_mode='same', activation='relu', subsample=(2, 2))(conv_2)
     conv_4 = Convolution2D(64, 3, 3,   border_mode='same', activation='relu', subsample=(2, 2))(conv_3)
@@ -84,25 +84,35 @@ def getModels():
     # We instantiate these layers separately so as to reuse them later
     # Dense from latent space to image dimension
     decoder_hid = Dense(intermediate_dim, activation='relu')
-    decoder_upsample = Dense(nb_filters * 14 * 14, activation='relu')
+    decoder_upsample = Dense(64 * 16 * 16, activation='relu')
 
     # Reshape for image
-    decoder_reshape = Reshape((14, 14, nb_filters))
+    decoder_reshape = Reshape((16, 16, 64))
 
-    # Deconv
-    decoder_deconv_1 = Deconvolution2D(nb_filters, nb_conv, nb_conv, (batch_size, 14, 14, nb_filters), border_mode='same', subsample=(1, 1), activation='relu')
-    decoder_deconv_2 = Deconvolution2D(nb_filters, nb_conv, nb_conv, (batch_size, 14, 14, nb_filters), border_mode='same', subsample=(1, 1), activation='relu')
-    decoder_deconv_3_upsamp = Deconvolution2D(nb_filters, 2, 2,  (batch_size, 29, 29, nb_filters),  border_mode='valid',  subsample=(2, 2),  activation='relu')
-    decoder_mean_squash = Convolution2D(3, 2, 2, border_mode='valid', activation='sigmoid')
+    # Upsample + Conv
+    decoder_upsampl_1 = UpSampling2D(size=(2, 2))
+    decoder_conv_1 = Convolution2D(32, 3, 3, border_mode='same', activation="relu")
+    decoder_upsampl_2 = UpSampling2D(size=(2, 2))
+    decoder_conv_2 = Convolution2D(32, 3, 3, border_mode='same', activation="relu")
+    decoder_upsampl_3 = UpSampling2D(size=(2, 2))
+
+    # Convert to RGB with last Conv
+    decoder_mean_squash = Convolution2D(3, 2, 2, border_mode='same', activation='tanh')
 
     # Build second part of model
     hid_decoded = decoder_hid(z)
     up_decoded = decoder_upsample(hid_decoded)
     reshape_decoded = decoder_reshape(up_decoded)
-    deconv_1_decoded = decoder_deconv_1(reshape_decoded)
-    deconv_2_decoded = decoder_deconv_2(deconv_1_decoded)
-    x_decoded_relu = decoder_deconv_3_upsamp(deconv_2_decoded)
-    x_decoded_mean_squash = decoder_mean_squash(x_decoded_relu)
+
+    # Add Upsample + Conv
+    upsampl_1_decoded = decoder_upsampl_1(reshape_decoded)
+    conv_1_decoded = decoder_conv_1(upsampl_1_decoded)
+
+    upsampl_2_decoded = decoder_upsampl_2(conv_1_decoded)
+    conv_2_decoded = decoder_conv_2(upsampl_2_decoded)
+
+    upsampl_3_decoded = decoder_upsampl_3(conv_2_decoded)
+    x_decoded_mean_squash = decoder_mean_squash(upsampl_3_decoded)
 
     # Build full VAE
     vae = Model(x, x_decoded_mean_squash)
@@ -115,10 +125,16 @@ def getModels():
     _hid_decoded = decoder_hid(decoder_input)
     _up_decoded = decoder_upsample(_hid_decoded)
     _reshape_decoded = decoder_reshape(_up_decoded)
-    _deconv_1_decoded = decoder_deconv_1(_reshape_decoded)
-    _deconv_2_decoded = decoder_deconv_2(_deconv_1_decoded)
-    _x_decoded_relu = decoder_deconv_3_upsamp(_deconv_2_decoded)
-    _x_decoded_mean_squash = decoder_mean_squash(_x_decoded_relu)
+
+    # Upsample + Conv for generator
+    _upsampl_1_decoded = decoder_upsampl_1(_reshape_decoded)
+    _conv_1_decoded = decoder_conv_1(_upsampl_1_decoded)
+
+    _upsampl_2_decoded = decoder_upsampl_2(_conv_1_decoded)
+    _conv_2_decoded = decoder_conv_2(_upsampl_2_decoded)
+
+    _upsampl_3_decoded = decoder_upsampl_3(_conv_2_decoded)
+    _x_decoded_mean_squash = decoder_mean_squash(_upsampl_3_decoded)
 
     # Build generator
     generator = Model(decoder_input, _x_decoded_mean_squash)
@@ -127,6 +143,10 @@ def getModels():
 
 # Trains the VAE
 def trainModel():
+
+    for model in getModels():
+        print model.summary()
+
     # Create models
     vae, _, _ = getModels()
     vae.compile(optimizer='rmsprop', loss=VAELoss)

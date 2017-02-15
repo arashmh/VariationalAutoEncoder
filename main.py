@@ -50,7 +50,6 @@ def testModel():
     #visualizeReconstructedVariations(X_test, vae)
     #computeLatentSpaceTSNEProjection(X_test, encoder, display=True)
     #visualizeInterpolation(X_test, encoder, generator)
-    #visualizeGeneratedImages(generator, gridSize=5)
 
 if __name__ == "__main__":
     arg = sys.argv[1] if len(sys.argv) == 2 else None 

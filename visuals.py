@@ -78,7 +78,7 @@ def visualizeReconstructedImages(X, vae):
 
 # Variations according to sampling
 def visualizeReconstructedVariations(X, vae):
-    exampleIndex = 53
+    exampleIndex = 2#53
     print("Generating image reconstructions...")
     while True:
         # Micro batch

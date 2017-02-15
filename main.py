@@ -1,11 +1,12 @@
 import sys
 
 from config import latent_dim, modelsPath, imageSize
+from keras.callbacks import TensorBoard
 from model import getModels, VAELoss
 from visuals import visualizeDataset, visualizeReconstructedImages, computeLatentSpaceTSNEProjection, visualizeInterpolation, visualizeReconstructedVariations
 from datasetTools import loadDataset
 
-nbEpoch = 5
+nbEpoch = 3
 batchSize = 128
 
 # Trains the VAE
@@ -17,10 +18,14 @@ def trainModel():
 
     print("Loading dataset...")
     X_train, X_test = loadDataset()
+    X_train = X_train
+    X_test = X_test
 
     # Train the VAE on dataset
     print("Training VAE...")
-    vae.fit(X_train, X_train, shuffle=True, nb_epoch=nbEpoch, batch_size=batchSize, validation_data=(X_test, X_test))
+    runID = "VAE - ZZZ"
+    tb = TensorBoard(log_dir='/tmp/logs/'+runID)
+    vae.fit(X_train, X_train, shuffle=True, nb_epoch=nbEpoch, batch_size=batchSize, validation_data=(X_test, X_test), callbacks=[tb])
 
     # Serialize weights to HDF5
     print("Saving weights...")

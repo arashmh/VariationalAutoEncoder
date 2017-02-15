@@ -15,7 +15,9 @@ from keras.layers import Convolution2D, Deconvolution2D, UpSampling2D
 from keras.models import Model
 from keras import backend as K
 from keras import objectives
-from config import batch_size, latent_dim
+from config import latent_dim
+
+from samplingLayer import SamplingLayer
 
 original_dim = 784
 intermediate_dim = 128
@@ -30,19 +32,13 @@ z_log_var = None
 
 # Loss function used for VAE
 def VAELoss(x, x_decoded_mean):
-    # NOTE: binary_crossentropy expects a batch_size by dim
+    # NOTE: binary_crossentropy expects a batchSize by dim
     # for x and x_decoded_mean, so we MUST flatten these!
     x = K.flatten(x)
     x_decoded_mean = K.flatten(x_decoded_mean)
     xent_loss = imageSize * imageSize * objectives.binary_crossentropy(x, x_decoded_mean)
     kl_loss = - 0.5 * K.mean(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1)
     return xent_loss + kl_loss
-
-# Samples a vector with given mean and variance
-def sampling(args):
-    z_mean, z_log_var = args
-    epsilon = K.random_normal(shape=(batch_size, latent_dim), mean=0., std=1.0)
-    return z_mean + K.exp(z_log_var / 2) * epsilon
 
 # Convolutional models
 def getModels():
@@ -67,7 +63,7 @@ def getModels():
     z_log_var = Dense(latent_dim)(hidden)
 
     # Sample Z from latent space distribution
-    z = Lambda(sampling)([z_mean, z_log_var])
+    z = SamplingLayer(latent_dim)([z_mean,z_log_var]) #Lambda(sampling)([z_mean, z_log_var])
 
     # We instantiate these layers separately so as to reuse them later
     # Dense from latent space to image dimension

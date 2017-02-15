@@ -1,5 +1,6 @@
 modelsPath = "Models/"
 datasetsPath = "Datasets/"
 
-batch_size = 10
-latent_dim = 10
+batchSize = 256
+latent_dim = 50
+imageSize = 128

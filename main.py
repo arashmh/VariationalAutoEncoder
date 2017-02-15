@@ -1,6 +1,6 @@
 import sys
 
-from config import batch_size, latent_dim
+from config import batch_size, latent_dim, modelsPath
 from model import getModels
 from visuals import visualizeDataset, visualizeReconstructedImages, computeLatentSpaceTSNEProjection, visualizeInterpolation, visualizeGeneratedImages, visualizeReconstructedVariations
 from datasetTools import loadDataset
@@ -17,7 +17,7 @@ def trainModel():
 
     # Serialize weights to HDF5
     print("Saving weights...")
-    vae.save_weights("model.h5")
+    vae.save_weights(modelsPath+"model.h5")
 
 # Generates images and plots
 def testModel():
@@ -27,7 +27,7 @@ def testModel():
 
     # Load VAE weights
     print("Loading weights...")
-    vae.load_weights("model.h5")
+    vae.load_weights(modelsPath+"model.h5")
 
     # Load dataset to test
     print("Loading dataset...")

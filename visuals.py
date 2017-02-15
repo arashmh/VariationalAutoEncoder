@@ -100,7 +100,7 @@ def visualizeReconstructedImages(X, vae):
         image = image.astype(np.uint8)
         result = image if result is None else np.vstack([result,image])
 
-    cv2.imshow("LOL",result)
+    cv2.imshow("Reconstructed images",result)
     cv2.waitKey()
 
 # Variations according to sampling
@@ -115,7 +115,7 @@ def visualizeReconstructedVariations(X, vae):
         for reconstructedImage in reconstructedX:
             image = np.hstack([imageData,reconstructedImage])*255.
             image = image.astype(np.uint8)
-            cv2.imshow("LOL",image)
+            cv2.imshow("Reconstructed image",image)
             cv2.waitKey()
 
 # Show every image, good for showing interplation candidates

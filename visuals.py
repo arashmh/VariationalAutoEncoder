@@ -17,8 +17,7 @@ from keras import backend as K
 from keras import objectives
 
 from model import getModels
-from datasetTools import loadDataset
-from config import batch_size
+from config import batch_size, latent_dim
 
 # Scatter with images instead of points
 def imscatter(x, y, ax, imageData, zoom=1):
@@ -84,6 +83,7 @@ def visualizeGeneratedImages(generator, gridSize=3):
     plt.imshow(figure)
     plt.show()
 
+# Reconstructions for samples in dataset
 def visualizeReconstructedImages(X, vae):
     # Crop X
     X = X[:10]
@@ -102,6 +102,21 @@ def visualizeReconstructedImages(X, vae):
 
     cv2.imshow("LOL",result)
     cv2.waitKey()
+
+# Variations according to sampling
+def visualizeReconstructedVariations(X, vae):
+    print("Generating image reconstructions...".format(batch_size))
+    while True:
+        # Crop X
+        imageData = X[53]
+        sameImageX = np.array([imageData for i in range(batch_size)])
+        reconstructedX = vae.predict(sameImageX)
+
+        for reconstructedImage in reconstructedX:
+            image = np.hstack([imageData,reconstructedImage])*255.
+            image = image.astype(np.uint8)
+            cv2.imshow("LOL",image)
+            cv2.waitKey()
 
 # Show every image, good for showing interplation candidates
 def visualizeDataset(X):

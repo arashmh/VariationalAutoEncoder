@@ -1,8 +1,8 @@
 import sys
 
-from config import batch_size
+from config import batch_size, latent_dim
 from model import getModels
-from visuals import visualizeDataset, visualizeReconstructedImages, computeLatentSpaceTSNEProjection, visualizeInterpolation, visualizeGeneratedImages
+from visuals import visualizeDataset, visualizeReconstructedImages, computeLatentSpaceTSNEProjection, visualizeInterpolation, visualizeGeneratedImages, visualizeReconstructedVariations
 from datasetTools import loadDataset
 
 # Trains the VAE
@@ -34,7 +34,8 @@ def testModel():
     _, X_test = loadDataset()
 
     #visualizeDataset(X_test)
-    visualizeReconstructedImages(X_test, vae)
+    #visualizeReconstructedImages(X_test, vae)
+    visualizeReconstructedVariations(X_test, vae)
     #computeLatentSpaceTSNEProjection(X_test, encoder, display=True)
     #visualizeInterpolation(X_test, encoder, generator)
     #visualizeGeneratedImages(generator, gridSize=5)

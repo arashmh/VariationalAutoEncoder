@@ -15,10 +15,9 @@ from keras.layers import Convolution2D, Deconvolution2D, UpSampling2D
 from keras.models import Model
 from keras import backend as K
 from keras import objectives
-from config import batch_size
+from config import batch_size, latent_dim
 
 original_dim = 784
-latent_dim = 10
 intermediate_dim = 128
 imageSize = 128
 

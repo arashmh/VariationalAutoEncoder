@@ -28,6 +28,8 @@ def imscatter(x, y, ax, imageData, zoom=1):
         # Convert to image
         img = imageData[i]*255.
         img = img.astype(np.uint8)
+        # OpenCV uses BGR and plt uses RGB
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         image = OffsetImage(img, zoom=zoom)
         ab = AnnotationBbox(image, (x0, y0), xycoords='data', frameon=False)
         images.append(ax.add_artist(ab))
@@ -36,7 +38,7 @@ def imscatter(x, y, ax, imageData, zoom=1):
     ax.autoscale()
 
 # Show dataset images with T-sne projection of latent space encoding
-def computeLatentSpaceTSNEProjection(X, encoder, display=True):
+def computeTSNEProjectionOnLatentSpace(X, encoder, display=True):
     # Compute latent space representation
     print("Computing latent space projection...")
     X_encoded = encoder.predict(X)
@@ -50,7 +52,23 @@ def computeLatentSpaceTSNEProjection(X, encoder, display=True):
     if display:
         print("Plotting t-SNE visualization...")
         fig, ax = plt.subplots()
-        imscatter(X_tsne[:, 0], X_tsne[:, 1], imageData=X, ax=ax, zoom=0.1)
+        imscatter(X_tsne[:, 0], X_tsne[:, 1], imageData=X, ax=ax, zoom=0.15)
+        plt.show()
+    else:
+        return X_tsne
+
+# Show dataset images with T-sne projection of pixel space
+def computeTSNEProjectionOnPixelSpace(X, display=True):
+    # Compute t-SNE embedding of latent space
+    print("Computing t-SNE embedding...")
+    tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+    X_tsne = tsne.fit_transform(X.reshape([-1,imageSize*imageSize*3]))
+
+    # Plot images according to t-sne embedding
+    if display:
+        print("Plotting t-SNE visualization...")
+        fig, ax = plt.subplots()
+        imscatter(X_tsne[:, 0], X_tsne[:, 1], imageData=X, ax=ax, zoom=0.15)
         plt.show()
     else:
         return X_tsne

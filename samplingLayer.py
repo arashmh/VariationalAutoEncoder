@@ -15,7 +15,7 @@ class SamplingLayer(Layer):
     def call(self, x, mask=None):
         z_mean, z_log_var = x
         dynamicBatchSize = K.shape(z_mean)[0]
-        epsilon = K.random_normal(shape=(K.shape(z_mean)[0], latent_dim), mean=0., std=1.0)
+        epsilon = K.random_normal(shape=(K.shape(z_mean)[0], latent_dim), mean=0., std=1.)
         return z_mean + K.exp(z_log_var / 2) * epsilon
 
     def get_output_shape_for(self, input_shape):

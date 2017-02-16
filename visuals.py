@@ -38,7 +38,7 @@ def imscatter(x, y, ax, imageData, zoom=1):
     ax.autoscale()
 
 # Show dataset images with T-sne projection of latent space encoding
-def computeTSNEProjectionOnLatentSpace(X, encoder, display=True):
+def computeTSNEProjectionOfLatentSpace(X, encoder, display=True):
     # Compute latent space representation
     print("Computing latent space projection...")
     X_encoded = encoder.predict(X)
@@ -58,7 +58,7 @@ def computeTSNEProjectionOnLatentSpace(X, encoder, display=True):
         return X_tsne
 
 # Show dataset images with T-sne projection of pixel space
-def computeTSNEProjectionOnPixelSpace(X, display=True):
+def computeTSNEProjectionOfPixelSpace(X, display=True):
     # Compute t-SNE embedding of latent space
     print("Computing t-SNE embedding...")
     tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)

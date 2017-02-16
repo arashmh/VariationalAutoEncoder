@@ -3,7 +3,7 @@ import sys
 from config import latent_dim, modelsPath, imageSize
 from keras.callbacks import TensorBoard
 from model import getModels, VAELoss
-from visuals import visualizeDataset, visualizeReconstructedImages, computeTSNEProjectionOnLatentSpace, computeTSNEProjectionOnPixelSpace, visualizeInterpolation, visualizeReconstructedVariations
+from visuals import visualizeDataset, visualizeReconstructedImages, computeTSNEProjectionOfLatentSpace, computeTSNEProjectionOfPixelSpace, visualizeInterpolation, visualizeReconstructedVariations
 from datasetTools import loadDataset
 
 nbEpoch = 3
@@ -48,8 +48,8 @@ def testModel():
     #visualizeDataset(X_test)
     #visualizeReconstructedImages(X_test, vae)
     #visualizeReconstructedVariations(X_test, vae)
-    #computeTSNEProjectionOnPixelSpace(X_test, display=True)
-    computeTSNEProjectionOnLatentSpace(X_test, encoder, display=True)
+    #computeTSNEProjectionOfPixelSpace(X_test, display=True)
+    computeTSNEProjectionOfLatentSpace(X_test, encoder, display=True)
     #visualizeInterpolation(X_test, encoder, generator)
 
 if __name__ == "__main__":
